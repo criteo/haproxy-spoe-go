@@ -22,7 +22,7 @@ const (
 )
 
 var (
-	helloCapabilities = []string{capabilityAsync, capabilityPipelining}
+	helloCapabilities = []string{capabilityPipelining}
 )
 
 func (c *conn) handleHello(frame frame) (frame, bool, error) {
@@ -110,19 +110,16 @@ func (c *conn) handleHello(frame frame) (frame, bool, error) {
 }
 
 func checkCapabilities(capas string) bool {
-	hasAsync := false
 	hasPipelining := false
 
 	for _, s := range strings.Split(capas, ",") {
 		switch s {
-		case capabilityAsync:
-			hasAsync = true
 		case capabilityPipelining:
 			hasPipelining = true
 		}
 	}
 
-	return hasAsync && hasPipelining
+	return hasPipelining
 }
 
 func parseVersion(v string) ([]int, error) {

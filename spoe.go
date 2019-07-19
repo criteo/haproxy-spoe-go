@@ -152,7 +152,7 @@ func (c *conn) run(a *Agent) error {
 	// signal that this connection is done using the engine
 	defer a.acksWG[c.engineID].Done()
 
-	acks := a.acks[c.engineID]
+	acks := make(chan frame)
 	a.acksLock.Unlock()
 
 	// run reply loop
