@@ -317,5 +317,9 @@ func encodeKV(b []byte, name string, v interface{}) (int, error) {
 		return 0, fmt.Errorf("encode k/v (%s): type %T is not handled", name, v)
 	}
 
+	if err != nil {
+		return 0, err
+	}
+
 	return n + m, nil
 }
