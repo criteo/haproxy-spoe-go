@@ -1,6 +1,6 @@
 # SPOE in Go
 
-An implementation of the SPOP protocol in Go. (https://www.haproxy.org/download/1.9/doc/SPOE.txt)
+An implementation of the SPOP protocol in Go. (https://www.haproxy.org/download/2.0/doc/SPOE.txt)
 
 ## SPOE
 
