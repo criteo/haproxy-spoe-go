@@ -33,7 +33,7 @@ import (
 	"net"
 
 	"log"
-	"github.com/aestek/haproxy-connect/spoe"
+	spoe "https://github.com/criteo/haproxy-spoe-go"
 )
 
 func getReputation(ip net.IP) (float64, error) {
