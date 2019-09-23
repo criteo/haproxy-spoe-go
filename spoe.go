@@ -36,21 +36,26 @@ type conn struct {
 
 type Handler func(args []Message) ([]Action, error)
 
+type acksKey struct {
+	Engine string
+	Conn   net.Conn
+}
+
 type Agent struct {
 	Handler Handler
 
 	maxFrameSize int
 
 	acksLock sync.Mutex
-	acks     map[string]chan frame
-	acksWG   map[string]*sync.WaitGroup
+	acks     map[acksKey]chan frame
+	acksWG   map[acksKey]*sync.WaitGroup
 }
 
 func New(h Handler) *Agent {
 	a := &Agent{
 		Handler: h,
-		acks:    make(map[string]chan frame),
-		acksWG:  make(map[string]*sync.WaitGroup),
+		acks:    make(map[acksKey]chan frame),
+		acksWG:  make(map[acksKey]*sync.WaitGroup),
 	}
 	return a
 }
@@ -106,9 +111,16 @@ func (c *conn) run(a *Agent) error {
 		return fmt.Errorf("unexpected frame type %x when initializing connection", myframe.ftype)
 	}
 
-	myframe, healcheck, err := c.handleHello(myframe)
+	myframe, capabilities, healcheck, err := c.handleHello(myframe)
 	if err != nil {
 		return err
+	}
+
+	acksKey := acksKey{
+		Engine: c.engineID,
+	}
+	if !capabilities[capabilityAsync] {
+		acksKey.Conn = c.Conn
 	}
 
 	err = encodeFrame(c.buff, myframe)
@@ -130,11 +142,11 @@ func (c *conn) run(a *Agent) error {
 	}
 
 	a.acksLock.Lock()
-	if _, ok := a.acks[c.engineID]; !ok {
-		a.acks[c.engineID] = make(chan frame)
+	if _, ok := a.acks[acksKey]; !ok {
+		a.acks[acksKey] = make(chan frame)
 		wg := &sync.WaitGroup{}
 		wg.Add(1)
-		a.acksWG[c.engineID] = wg
+		a.acksWG[acksKey] = wg
 
 		go func() {
 			// wait until there is not more connection for this engine-id
@@ -142,17 +154,17 @@ func (c *conn) run(a *Agent) error {
 			wg.Wait()
 
 			a.acksLock.Lock()
-			delete(a.acksWG, c.engineID)
-			delete(a.acks, c.engineID)
+			delete(a.acksWG, acksKey)
+			delete(a.acks, acksKey)
 			a.acksLock.Unlock()
 		}()
 	} else {
-		a.acksWG[c.engineID].Add(1)
+		a.acksWG[acksKey].Add(1)
 	}
 	// signal that this connection is done using the engine
-	defer a.acksWG[c.engineID].Done()
+	defer a.acksWG[acksKey].Done()
 
-	acks := a.acks[c.engineID]
+	acks := a.acks[acksKey]
 	a.acksLock.Unlock()
 
 	// run reply loop

@@ -21,21 +21,17 @@ const (
 	capabilityPipelining = "pipelining"
 )
 
-var (
-	helloCapabilities = []string{capabilityAsync, capabilityPipelining}
-)
-
-func (c *conn) handleHello(frame frame) (frame, bool, error) {
+func (c *conn) handleHello(frame frame) (frame, map[string]bool, bool, error) {
 	data, _, err := decodeKVs(frame.data, -1)
 	if err != nil {
-		return frame, false, errors.Wrap(err, "hello")
+		return frame, nil, false, errors.Wrap(err, "hello")
 	}
 
 	log.Infof("spoe: hello from %s: %+v", c.Conn.RemoteAddr(), data)
 
 	remoteFrameSize, ok := data[helloKeyMaxFrameSize].(uint)
 	if !ok {
-		return frame, false, fmt.Errorf("hello: expected %s", helloKeyMaxFrameSize)
+		return frame, nil, false, fmt.Errorf("hello: expected %s", helloKeyMaxFrameSize)
 	}
 
 	connFrameSize := remoteFrameSize
@@ -47,14 +43,14 @@ func (c *conn) handleHello(frame frame) (frame, bool, error) {
 
 	remoteSupportedVersions, ok := data[helloKeySupportedVersions].(string)
 	if !ok {
-		return frame, false, fmt.Errorf("hello: expected %s", helloKeyVersion)
+		return frame, nil, false, fmt.Errorf("hello: expected %s", helloKeyVersion)
 	}
 
 	versionOK := false
 	for _, supportedVersion := range strings.Split(remoteSupportedVersions, ",") {
 		remoteVersion, err := parseVersion(supportedVersion)
 		if err != nil {
-			return frame, false, errors.Wrap(err, "hello")
+			return frame, nil, false, errors.Wrap(err, "hello")
 		}
 
 		if remoteVersion[0] == 2 {
@@ -63,21 +59,21 @@ func (c *conn) handleHello(frame frame) (frame, bool, error) {
 	}
 
 	if !versionOK {
-		return frame, false, fmt.Errorf("hello: incompatible version %s, need %s", remoteSupportedVersions, version)
+		return frame, nil, false, fmt.Errorf("hello: incompatible version %s, need %s", remoteSupportedVersions, version)
 	}
 
-	remoteCapabilities, ok := data[helloKeyCapabilities].(string)
+	remoteCapabilitiesStr, ok := data[helloKeyCapabilities].(string)
 	if !ok {
-		return frame, false, fmt.Errorf("hello: expected %s", helloKeyCapabilities)
+		return frame, nil, false, fmt.Errorf("hello: expected %s", helloKeyCapabilities)
 	}
-
-	if !checkCapabilities(remoteCapabilities) {
-		return frame, false, fmt.Errorf("hello: expected capabilities %v", helloCapabilities)
+	remoteCapabilities := parseCapabilities(remoteCapabilitiesStr)
+	if !remoteCapabilities[capabilityPipelining] {
+		return frame, nil, false, fmt.Errorf("hello: expected pipelining capability")
 	}
 
 	c.engineID, _ = data[helloKeyEngineId].(string)
 	if len(c.engineID) == 0 {
-		return frame, false, fmt.Errorf("hello: engine-id not found")
+		return frame, nil, false, fmt.Errorf("hello: engine-id not found")
 	}
 
 	frame.ftype = frameTypeAgentHello
@@ -86,19 +82,24 @@ func (c *conn) handleHello(frame frame) (frame, bool, error) {
 	off := 0
 	n, err := encodeKV(frame.data[off:], helloKeyVersion, version)
 	if err != nil {
-		return frame, false, errors.Wrap(err, "hello")
+		return frame, nil, false, errors.Wrap(err, "hello")
 	}
 	off += n
 
 	n, err = encodeKV(frame.data[off:], helloKeyMaxFrameSize, connFrameSize)
 	if err != nil {
-		return frame, false, errors.Wrap(err, "hello")
+		return frame, nil, false, errors.Wrap(err, "hello")
 	}
 	off += n
 
-	n, err = encodeKV(frame.data[off:], helloKeyCapabilities, strings.Join(helloCapabilities, ","))
+	localCapabilities := []string{capabilityPipelining}
+	if remoteCapabilities[capabilityAsync] {
+		localCapabilities = append(localCapabilities, capabilityAsync)
+	}
+
+	n, err = encodeKV(frame.data[off:], helloKeyCapabilities, strings.Join(localCapabilities, ","))
 	if err != nil {
-		return frame, false, errors.Wrap(err, "hello")
+		return frame, nil, false, errors.Wrap(err, "hello")
 	}
 	off += n
 
@@ -106,23 +107,28 @@ func (c *conn) handleHello(frame frame) (frame, bool, error) {
 
 	healthcheck, _ := data[helloKeyHealthcheck].(bool)
 
-	return frame, healthcheck, nil
+	return frame, remoteCapabilities, healthcheck, nil
+}
+
+func parseCapabilities(capas string) map[string]bool {
+	caps := map[string]bool{}
+	for _, s := range strings.Split(capas, ",") {
+		caps[s] = true
+	}
+	return caps
 }
 
 func checkCapabilities(capas string) bool {
-	hasAsync := false
 	hasPipelining := false
 
 	for _, s := range strings.Split(capas, ",") {
 		switch s {
-		case capabilityAsync:
-			hasAsync = true
 		case capabilityPipelining:
 			hasPipelining = true
 		}
 	}
 
-	return hasAsync && hasPipelining
+	return hasPipelining
 }
 
 func parseVersion(v string) ([]int, error) {
