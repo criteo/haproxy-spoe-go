@@ -11,13 +11,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-type connState int
-
-const (
-	connStateInit connState = iota
-	connStateProcessing
-)
-
 const (
 	version      = "2.0"
 	maxFrameSize = 16380
@@ -25,7 +18,6 @@ const (
 
 type conn struct {
 	net.Conn
-	state connState
 
 	handler      Handler
 	buff         *bufio.ReadWriter
@@ -84,7 +76,6 @@ func (a *Agent) Serve(lis net.Listener) error {
 		go func() {
 			c := &conn{
 				Conn:    c,
-				state:   connStateInit,
 				handler: a.Handler,
 				buff:    bufio.NewReadWriter(bufio.NewReader(c), bufio.NewWriter(c)),
 			}
@@ -149,7 +140,7 @@ func (c *conn) run(a *Agent) error {
 		a.acksWG[acksKey] = wg
 
 		go func() {
-			// wait until there is not more connection for this engine-id
+			// wait until there is no more connection for this engine-id
 			// before deleting it
 			wg.Wait()
 
@@ -184,7 +175,7 @@ func (c *conn) run(a *Agent) error {
 					log.Errorf("spoe: %s", err)
 					continue
 				}
-				pool.Put(myframe.originalBuffer)
+				pool.Put(myframe.data[:c.maxFrameSize])
 			}
 		}
 	}()
