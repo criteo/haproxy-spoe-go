@@ -32,15 +32,18 @@ const (
 )
 
 type frame struct {
-	ftype    frameType
-	flags    frameFlag
-	streamID int
-	frameID  int
-	data     []byte
+	ftype        frameType
+	flags        frameFlag
+	streamID     int
+	frameID      int
+	data         []byte
+	originalData []byte
 }
 
 func decodeFrame(r io.Reader, buffer []byte) (frame, error) {
-	frame := frame{}
+	frame := frame{
+		originalData: buffer,
+	}
 
 	// read the frame length
 	_, err := io.ReadFull(r, buffer[:4])

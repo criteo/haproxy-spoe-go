@@ -27,6 +27,8 @@ func TestFrameEncoding(t *testing.T) {
 	decoded, err := decodeFrame(bytes.NewBuffer(encoded), make([]byte, maxFrameSize))
 	require.Nil(t, err)
 
+	decoded.originalData = nil
+
 	require.Equal(t, frame, decoded)
 }
 

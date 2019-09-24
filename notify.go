@@ -43,11 +43,12 @@ func (c *conn) handleNotify(f frame) (frame, error) {
 
 	f.ftype = frameTypeAgentACK
 	f.flags = frameFlagFin
+	f.data = f.originalData
 
 	off = 0
 
 	for _, a := range actions {
-		n, err := a.encode(f.data[off:c.frameSize])
+		n, err := a.encode(f.data[off:])
 		if err != nil {
 			return f, errors.Wrap(err, "handle notify")
 		}

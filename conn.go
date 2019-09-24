@@ -108,7 +108,7 @@ func (c *conn) run(a *Agent) error {
 					log.Errorf("spoe: %s", err)
 					continue
 				}
-				pool.Put(myframe.data[:c.frameSize])
+				pool.Put(myframe.originalData)
 			}
 		}
 	}()
@@ -140,7 +140,7 @@ func (c *conn) run(a *Agent) error {
 			return nil
 
 		default:
-			log.Errorf("spoe: frame type %x is not handled", myframe.ftype)
+			return fmt.Errorf("spoe: frame type %x is not handled", myframe.ftype)
 		}
 	}
 }

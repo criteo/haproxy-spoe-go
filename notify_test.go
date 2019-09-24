@@ -7,8 +7,10 @@ import (
 )
 
 func TestNotify(t *testing.T) {
+	data := make([]byte, maxFrameSize)
 	f := frame{
-		data: make([]byte, maxFrameSize),
+		data:         data,
+		originalData: data,
 	}
 
 	m := 0

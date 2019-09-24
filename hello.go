@@ -78,7 +78,7 @@ func (c *conn) handleHello(frame frame) (frame, map[string]bool, bool, error) {
 
 	frame.ftype = frameTypeAgentHello
 	frame.flags = frameFlagFin
-	frame.data = frame.data[:maxFrameSize]
+	frame.data = frame.originalData
 
 	off := 0
 	n, err := encodeKV(frame.data[off:], helloKeyVersion, version)
