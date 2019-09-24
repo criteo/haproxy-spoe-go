@@ -12,9 +12,9 @@ import (
 type conn struct {
 	net.Conn
 
-	handler      Handler
-	buff         *bufio.ReadWriter
-	maxFrameSize int
+	handler   Handler
+	buff      *bufio.ReadWriter
+	frameSize int
 
 	engineID string
 }
@@ -40,7 +40,8 @@ func (c *conn) run(a *Agent) error {
 	}
 
 	acksKey := acksKey{
-		Engine: c.engineID,
+		FrameSize: c.frameSize,
+		Engine:    c.engineID,
 	}
 	if !capabilities[capabilityAsync] {
 		acksKey.Conn = c.Conn
@@ -60,7 +61,7 @@ func (c *conn) run(a *Agent) error {
 
 	pool := &sync.Pool{
 		New: func() interface{} {
-			return make([]byte, c.maxFrameSize)
+			return make([]byte, c.frameSize)
 		},
 	}
 
@@ -107,7 +108,7 @@ func (c *conn) run(a *Agent) error {
 					log.Errorf("spoe: %s", err)
 					continue
 				}
-				pool.Put(myframe.data[:c.maxFrameSize])
+				pool.Put(myframe.data[:c.frameSize])
 			}
 		}
 	}()

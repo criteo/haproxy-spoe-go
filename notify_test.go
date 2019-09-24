@@ -53,7 +53,7 @@ func TestNotify(t *testing.T) {
 	}
 
 	conn := &conn{
-		maxFrameSize: maxFrameSize,
+		frameSize: maxFrameSize,
 		handler: func(args []Message) ([]Action, error) {
 			require.Len(t, args, 2)
 

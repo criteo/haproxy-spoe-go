@@ -39,7 +39,7 @@ func (c *conn) handleHello(frame frame) (frame, map[string]bool, bool, error) {
 		connFrameSize = maxFrameSize
 	}
 
-	c.maxFrameSize = int(connFrameSize)
+	c.frameSize = int(connFrameSize)
 
 	remoteSupportedVersions, ok := data[helloKeySupportedVersions].(string)
 	if !ok {

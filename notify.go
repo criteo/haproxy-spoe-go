@@ -47,7 +47,7 @@ func (c *conn) handleNotify(f frame) (frame, error) {
 	off = 0
 
 	for _, a := range actions {
-		n, err := a.encode(f.data[off:c.maxFrameSize])
+		n, err := a.encode(f.data[off:c.frameSize])
 		if err != nil {
 			return f, errors.Wrap(err, "handle notify")
 		}

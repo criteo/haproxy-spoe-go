@@ -18,8 +18,9 @@ const (
 type Handler func(args []Message) ([]Action, error)
 
 type acksKey struct {
-	Engine string
-	Conn   net.Conn
+	FrameSize int
+	Engine    string
+	Conn      net.Conn
 }
 
 type Agent struct {
