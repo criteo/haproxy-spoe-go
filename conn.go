@@ -25,9 +25,12 @@ func (c *conn) run(a *Agent) error {
 	done := make(chan struct{})
 	defer close(done)
 
-	myframe, err := decodeFrame(c, make([]byte, maxFrameSize))
+	myframe, ok, err := decodeFrame(c, make([]byte, maxFrameSize))
 	if err != nil {
 		return err
+	}
+	if !ok {
+		return nil
 	}
 
 	if myframe.ftype != frameTypeHaproxyHello {
@@ -114,9 +117,12 @@ func (c *conn) run(a *Agent) error {
 	}()
 
 	for {
-		myframe, err := decodeFrame(c, pool.Get().([]byte))
+		myframe, ok, err := decodeFrame(c, pool.Get().([]byte))
 		if err != nil {
 			return err
+		}
+		if !ok {
+			return nil
 		}
 
 		switch myframe.ftype {

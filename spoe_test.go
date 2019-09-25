@@ -32,7 +32,8 @@ func TestSPOE(t *testing.T) {
 	helloReq := helloFrame(t)
 	require.NoError(t, encodeFrame(client, helloReq))
 
-	helloRes, err := decodeFrame(client, make([]byte, maxFrameSize))
+	helloRes, ok, err := decodeFrame(client, make([]byte, maxFrameSize))
+	require.True(t, ok)
 	require.NoError(t, err)
 
 	require.Equal(t, helloReq.streamID, helloRes.streamID)
@@ -41,7 +42,8 @@ func TestSPOE(t *testing.T) {
 	notifyReq := notifyFrame(t)
 	require.NoError(t, encodeFrame(client, notifyReq))
 
-	notifyRes, err := decodeFrame(client, make([]byte, maxFrameSize))
+	notifyRes, ok, err := decodeFrame(client, make([]byte, maxFrameSize))
+	require.True(t, ok)
 	require.NoError(t, err)
 
 	require.Equal(t, notifyReq.streamID, notifyRes.streamID)

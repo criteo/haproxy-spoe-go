@@ -40,23 +40,27 @@ type frame struct {
 	originalData []byte
 }
 
-func decodeFrame(r io.Reader, buffer []byte) (frame, error) {
+func decodeFrame(r io.Reader, buffer []byte) (frame, bool, error) {
 	frame := frame{
 		originalData: buffer,
 	}
 
 	// read the frame length
 	_, err := io.ReadFull(r, buffer[:4])
+	// EOF on first read is not an error
+	if err == io.EOF {
+		return frame, false, nil
+	}
 	if err != nil {
-		errors.Wrap(err, "frame read")
+		return frame, false, errors.Wrap(err, "frame read")
 	}
 	frameLength, _, err := decodeUint32(buffer[:4])
 	if err != nil {
-		return frame, nil
+		return frame, false, errors.Wrap(err, "frame read")
 	}
 
 	if frameLength > maxFrameSize {
-		return frame, errors.New("frame length")
+		return frame, false, errors.New("frame length")
 	}
 
 	frame.data = buffer[:frameLength]
@@ -64,12 +68,12 @@ func decodeFrame(r io.Reader, buffer []byte) (frame, error) {
 	// read the frame data
 	_, err = io.ReadFull(r, frame.data)
 	if err != nil {
-		return frame, errors.Wrap(err, "frame read")
+		return frame, false, errors.Wrap(err, "frame read")
 	}
 
 	off := 0
 	if len(frame.data) == 0 {
-		return frame, fmt.Errorf("frame read: empty frame")
+		return frame, false, fmt.Errorf("frame read: empty frame")
 	}
 
 	frame.ftype = frameType(frame.data[0])
@@ -77,7 +81,7 @@ func decodeFrame(r io.Reader, buffer []byte) (frame, error) {
 
 	flags, n, err := decodeUint32(frame.data[off:])
 	if err != nil {
-		return frame, errors.Wrap(err, "frame read")
+		return frame, false, errors.Wrap(err, "frame read")
 	}
 
 	off += n
@@ -85,20 +89,20 @@ func decodeFrame(r io.Reader, buffer []byte) (frame, error) {
 
 	streamID, n, err := decodeVarint(frame.data[off:])
 	if err != nil {
-		return frame, errors.Wrap(err, "frame read")
+		return frame, false, errors.Wrap(err, "frame read")
 	}
 	off += n
 
 	frameID, n, err := decodeVarint(frame.data[off:])
 	if err != nil {
-		return frame, errors.Wrap(err, "frame read")
+		return frame, false, errors.Wrap(err, "frame read")
 	}
 	off += n
 
 	frame.streamID = streamID
 	frame.frameID = frameID
 	frame.data = frame.data[off:]
-	return frame, nil
+	return frame, true, nil
 }
 
 func encodeFrame(w io.Writer, f frame) error {
