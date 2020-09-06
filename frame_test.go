@@ -1,14 +1,14 @@
 package spoe
 
 import (
-	"bytes"
+	"net"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestFrameEncoding(t *testing.T) {
-	buf := bytes.NewBuffer(nil)
 	frame := frame{
 		ftype:    frameTypeAgentACK,
 		flags:    frameFlagFin,
@@ -17,14 +17,16 @@ func TestFrameEncoding(t *testing.T) {
 		data:     []byte("this is the frame data"),
 	}
 
-	err := encodeFrame(buf, frame)
-	require.Nil(t, err)
+	server, client := net.Pipe()
+	rcod := newCodec(server, defaultConfig)
+	wcod := newCodec(client, defaultConfig)
 
-	encoded := buf.Bytes()
+	go func() {
+		err := wcod.encodeFrame(frame)
+		assert.Nil(t, err)
+	}()
 
-	require.Equal(t, 11+len(frame.data), len(encoded))
-
-	decoded, ok, err := decodeFrame(bytes.NewBuffer(encoded), make([]byte, maxFrameSize))
+	decoded, ok, err := rcod.decodeFrame(make([]byte, maxFrameSize))
 	require.Nil(t, err)
 	require.True(t, ok)
 

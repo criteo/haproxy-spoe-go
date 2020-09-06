@@ -1,9 +1,9 @@
 package spoe
 
 import (
-	"bufio"
 	"net"
 	"sync"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -17,6 +17,18 @@ const (
 
 type Handler func(args []Message) ([]Action, error)
 
+type Config struct {
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
+	IdleTimeout  time.Duration
+}
+
+var defaultConfig = Config{
+	ReadTimeout:  time.Second,
+	WriteTimeout: time.Second,
+	IdleTimeout:  30 * time.Second,
+}
+
 type acksKey struct {
 	FrameSize int
 	Engine    string
@@ -25,6 +37,7 @@ type acksKey struct {
 
 type Agent struct {
 	Handler Handler
+	cfg     Config
 
 	maxFrameSize int
 
@@ -34,12 +47,16 @@ type Agent struct {
 }
 
 func New(h Handler) *Agent {
-	a := &Agent{
+	return NewWithConfig(h, defaultConfig)
+}
+
+func NewWithConfig(h Handler, cfg Config) *Agent {
+	return &Agent{
 		Handler: h,
+		cfg:     cfg,
 		acks:    make(map[acksKey]chan frame),
 		acksWG:  make(map[acksKey]*sync.WaitGroup),
 	}
-	return a
 }
 
 func (a *Agent) ListenAndServe(addr string) error {
@@ -67,7 +84,7 @@ func (a *Agent) Serve(lis net.Listener) error {
 			c := &conn{
 				Conn:    c,
 				handler: a.Handler,
-				buff:    bufio.NewReadWriter(bufio.NewReader(c), bufio.NewWriter(c)),
+				cfg:     a.cfg,
 			}
 			err := c.run(a)
 			if err != nil {
