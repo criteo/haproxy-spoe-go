@@ -1,3 +1,5 @@
+[![GoDoc](https://godoc.org/github.com/criteo/haproxy-spoe-go?status.svg)](https://godoc.org/github.com/criteo/haproxy-spoe-go)
+
 # SPOE in Go
 
 An implementation of the SPOP protocol in Go. (https://www.haproxy.org/download/2.0/doc/SPOE.txt)
