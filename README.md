@@ -24,7 +24,6 @@ From Haproxy's documentation :
 > easily imagine to implement SSO solution, ip reputation or ip geolocation
 > services.
 
-
 ## How to use
 
 ```golang
@@ -35,7 +34,8 @@ import (
 	"net"
 
 	"log"
-	spoe "https://github.com/criteo/haproxy-spoe-go"
+
+	spoe "github.com/criteo/haproxy-spoe-go"
 )
 
 func getReputation(ip net.IP) (float64, error) {
@@ -44,19 +44,30 @@ func getReputation(ip net.IP) (float64, error) {
 }
 
 func main() {
-	agent := spoe.New(func(messages []spoe.Message) ([]spoe.Action, error) {
+	agent := spoe.New(func(messages *spoe.MessageIterator) ([]spoe.Action, error) {
 		reputation := 0.0
 
-		for _, msg := range messages {
+		for messages.Next() {
+			msg := messages.Message
+
 			if msg.Name != "ip-rep" {
 				continue
 			}
 
-			ip, ok := msg.Args["ip"].(net.IP)
-			if !ok {
-				return nil, fmt.Errorf("spoe handler: expected ip in message, got %+v", ip)
+			var ip net.IP
+			for msg.Args.Next() {
+				arg := msg.Args.Arg
+
+				if arg.Name == "ip" {
+					var ok bool
+					ip, ok = arg.Value.(net.IP)
+					if !ok {
+						return nil, fmt.Errorf("spoe handler: expected ip in message, got %+v", ip)
+					}
+				}
 			}
 
+			var err error
 			reputation, err = getReputation(ip)
 			if err != nil {
 				return nil, fmt.Errorf("spoe handler: error processing request: %s", err)
@@ -76,5 +87,6 @@ func main() {
 		log.Fatal(err)
 	}
 }
+
 
 ```

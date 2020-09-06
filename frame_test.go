@@ -9,7 +9,7 @@ import (
 )
 
 func TestFrameEncoding(t *testing.T) {
-	frame := frame{
+	f := frame{
 		ftype:    frameTypeAgentACK,
 		flags:    frameFlagFin,
 		streamID: 42,
@@ -22,17 +22,18 @@ func TestFrameEncoding(t *testing.T) {
 	wcod := newCodec(client, defaultConfig)
 
 	go func() {
-		err := wcod.encodeFrame(frame)
+		err := wcod.encodeFrame(f)
 		assert.Nil(t, err)
 	}()
 
-	decoded, ok, err := rcod.decodeFrame(make([]byte, maxFrameSize))
+	decoded := frame{}
+	ok, err := rcod.decodeFrame(&decoded)
 	require.Nil(t, err)
 	require.True(t, ok)
 
 	decoded.originalData = nil
 
-	require.Equal(t, frame, decoded)
+	require.Equal(t, f, decoded)
 }
 
 func TestVarIntEncoding(t *testing.T) {

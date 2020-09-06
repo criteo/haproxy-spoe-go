@@ -15,7 +15,7 @@ const (
 	maxFrameSize = 16380
 )
 
-type Handler func(args []Message) ([]Action, error)
+type Handler func(msgs *MessageIterator) ([]Action, error)
 
 type Config struct {
 	ReadTimeout  time.Duration
@@ -74,17 +74,26 @@ func (a *Agent) Serve(lis net.Listener) error {
 	for {
 		c, err := lis.Accept()
 		if err != nil {
-			log.Errorf("spoe: %s", err)
-			continue
+			return err
+		}
+
+		err = c.(*net.TCPConn).SetWriteBuffer(maxFrameSize * 4)
+		if err != nil {
+			return err
+		}
+		err = c.(*net.TCPConn).SetReadBuffer(maxFrameSize * 4)
+		if err != nil {
+			return err
 		}
 
 		log.Debugf("spoe: connection from %s", c.RemoteAddr())
 
 		go func() {
 			c := &conn{
-				Conn:    c,
-				handler: a.Handler,
-				cfg:     a.cfg,
+				Conn:        c,
+				handler:     a.Handler,
+				cfg:         a.cfg,
+				notifyTasks: make(chan frame),
 			}
 			err := c.run(a)
 			if err != nil {

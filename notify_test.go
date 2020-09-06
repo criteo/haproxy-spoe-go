@@ -56,20 +56,27 @@ func TestNotify(t *testing.T) {
 
 	conn := &conn{
 		frameSize: maxFrameSize,
-		handler: func(args []Message) ([]Action, error) {
-			require.Len(t, args, 2)
+		handler: func(msgs *MessageIterator) ([]Action, error) {
+			ok := msgs.Next()
+			require.True(t, ok)
+			require.Equal(t, "message-1", msgs.Message.Name)
+			args := msgs.Message.Args.Map()
+			require.Equal(t, map[string]interface{}{
+				"key-1": "value1",
+				"key-2": 360,
+			}, args)
 
-			msg := args[0]
-			require.Equal(t, "message-1", msg.Name)
-			require.Len(t, msg.Args, 2)
-			require.Equal(t, "value1", msg.Args["key-1"])
-			require.Equal(t, 360, msg.Args["key-2"])
+			ok = msgs.Next()
+			require.True(t, ok)
+			require.Equal(t, "message-2", msgs.Message.Name)
+			args = msgs.Message.Args.Map()
+			require.Equal(t, map[string]interface{}{
+				"key2-1": "value21",
+				"key2-2": 362,
+			}, args)
 
-			msg = args[1]
-			require.Equal(t, "message-2", msg.Name)
-			require.Len(t, msg.Args, 2)
-			require.Equal(t, "value21", msg.Args["key2-1"])
-			require.Equal(t, 362, msg.Args["key2-2"])
+			require.False(t, msgs.Next())
+			require.NoError(t, msgs.Error())
 
 			handlerCalled = true
 
@@ -77,7 +84,8 @@ func TestNotify(t *testing.T) {
 		},
 	}
 
-	_, err = conn.handleNotify(f)
+	out := make(chan frame, 1)
+	err = conn.handleNotify(f, out)
 	require.Nil(t, err)
 	require.True(t, handlerCalled)
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
+	"unsafe"
 
 	"github.com/pkg/errors"
 )
@@ -41,6 +42,9 @@ func decodeUint32(b []byte) (uint32, int, error) {
 }
 
 func decodeVarint(b []byte) (int, int, error) {
+	if len(b) == 0 {
+		return 0, 0, fmt.Errorf("decode varint: unterminated sequence")
+	}
 	val := int(b[0])
 	off := 1
 
@@ -166,86 +170,100 @@ func decodeIPV6(b []byte) (net.IP, int, error) {
 
 func decodeString(b []byte) (string, int, error) {
 	b, n, err := decodeBytes(b)
-	return string(b), n, err
+	return *(*string)(unsafe.Pointer(&b)), n, err
 }
 
 func encodeString(b []byte, v string) (int, error) {
 	return encodeBytes(b, []byte(v))
 }
 
+func decodeKV(b []byte) (string, interface{}, int, error) {
+	off := 0
+	name, n, err := decodeString(b[off:])
+	if err != nil {
+		return "", nil, 0, errors.Wrap(err, "decode k/v")
+	}
+	off += n
+
+	dbyte := b[off]
+	dtype := dataType(dbyte & dataTypeMask)
+	off++
+
+	var value interface{}
+
+	switch dtype {
+	case dataTypeNull:
+		// noop
+	case dataTypeBool:
+		value = dbyte&dataFlagTrue > 0
+
+	case dataTypeInt32, dataTypeInt64:
+		v, n, err := decodeVarint(b[off:])
+		if err != nil {
+			return "", nil, 0, errors.Wrap(err, "decode k/v")
+		}
+		off += n
+		value = int(v)
+
+	case dataTypeUInt32, dataTypeUInt64:
+		v, n, err := decodeVarint(b[off:])
+		if err != nil {
+			return "", nil, 0, errors.Wrap(err, "decode k/v")
+		}
+		off += n
+		value = uint(v)
+
+	case dataTypeIPV4:
+		v, n, err := decodeIPV4(b[off:])
+		if err != nil {
+			return "", nil, 0, errors.Wrap(err, "decode k/v")
+		}
+		off += n
+		value = v
+
+	case dataTypeIPV6:
+		v, n, err := decodeIPV6(b[off:])
+		if err != nil {
+			return "", nil, 0, errors.Wrap(err, "decode k/v")
+		}
+		off += n
+		value = v
+	case dataTypeString:
+		v, n, err := decodeString(b[off:])
+		if err != nil {
+			return "", nil, 0, errors.Wrap(err, "decode k/v")
+		}
+		off += n
+		value = v
+
+	case dataTypeBinary:
+		v, n, err := decodeBytes(b[off:])
+		if err != nil {
+			return "", nil, 0, errors.Wrap(err, "decode k/v")
+		}
+		off += n
+		value = v
+	default:
+		return "", nil, 0, fmt.Errorf("decode k/v: unknown data type %x", dtype)
+	}
+
+	return name, value, off, nil
+}
+
 func decodeKVs(b []byte, count int) (map[string]interface{}, int, error) {
-	res := make(map[string]interface{})
+	ml := count
+	if ml == -1 {
+		ml = 1
+	}
+	res := make(map[string]interface{}, ml)
 	off := 0
 
 	for off < len(b) && (count == -1 || len(res) < count) {
-		name, n, err := decodeString(b[off:])
+		name, value, n, err := decodeKV(b[off:])
 		if err != nil {
-			return nil, 0, errors.Wrap(err, "decode k/v")
+			return nil, 0, err
 		}
 		off += n
-
-		var value interface{}
-
-		dbyte := b[off]
-		dtype := dataType(dbyte & dataTypeMask)
-		off++
-
-		switch dtype {
-		case dataTypeNull:
-			// noop
-		case dataTypeBool:
-			value = dbyte&dataFlagTrue > 0
-
-		case dataTypeInt32, dataTypeInt64:
-			v, n, err := decodeVarint(b[off:])
-			if err != nil {
-				return nil, 0, errors.Wrap(err, "decode k/v")
-			}
-			off += n
-			value = int(v)
-
-		case dataTypeUInt32, dataTypeUInt64:
-			v, n, err := decodeVarint(b[off:])
-			if err != nil {
-				return nil, 0, errors.Wrap(err, "decode k/v")
-			}
-			off += n
-			value = uint(v)
-
-		case dataTypeIPV4:
-			v, n, err := decodeIPV4(b[off:])
-			if err != nil {
-				return nil, 0, errors.Wrap(err, "decode k/v")
-			}
-			off += n
-			value = v
-
-		case dataTypeIPV6:
-			v, n, err := decodeIPV6(b[off:])
-			if err != nil {
-				return nil, 0, errors.Wrap(err, "decode k/v")
-			}
-			off += n
-			value = v
-		case dataTypeString:
-			v, n, err := decodeString(b[off:])
-			if err != nil {
-				return nil, 0, errors.Wrap(err, "decode k/v")
-			}
-			off += n
-			value = v
-
-		case dataTypeBinary:
-			v, n, err := decodeBytes(b[off:])
-			if err != nil {
-				return nil, 0, errors.Wrap(err, "decode k/v")
-			}
-			off += n
-			value = v
-		default:
-			return nil, 0, fmt.Errorf("decode k/v: unknown data type %x", dtype)
-		}
-
 		res[name] = value
 	}
 

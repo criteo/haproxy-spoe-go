@@ -11,6 +11,7 @@ import (
 
 	gerrs "errors"
 
+	pool "github.com/libp2p/go-buffer-pool"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
@@ -61,44 +62,43 @@ func newCodec(conn net.Conn, cfg Config) *codec {
 	}
 }
 
-func (c *codec) decodeFrame(buffer []byte) (frame, bool, error) {
-	frame := frame{
-		originalData: buffer,
-	}
+func (c *codec) decodeFrame(frame *frame) (bool, error) {
+	buffer := pool.Get(maxFrameSize)
+	frame.originalData = buffer
 
 	err := c.conn.SetReadDeadline(time.Now().Add(c.cfg.IdleTimeout))
 	if err != nil {
-		return frame, false, errors.Wrap(err, "frame read")
+		return false, errors.Wrap(err, "frame read")
 	}
 
 	// read the frame length
 	_, err = io.ReadFull(c.buff, buffer[:4])
 	// EOF on first read is not an error
 	if err == io.EOF {
-		return frame, false, nil
+		return false, nil
 	}
 	// special case for idle timeout
 	if gerrs.Is(err, os.ErrDeadlineExceeded) {
 		log.Debug("spoe: connection idle timeout")
-		return frame, false, nil
+		return false, nil
 	}
 	if err != nil {
-		return frame, false, errors.Wrap(err, "frame read")
+		return false, errors.Wrap(err, "frame read")
 	}
 
 	// we have a frame, switch to read timeout
 	err = c.conn.SetDeadline(time.Now().Add(c.cfg.ReadTimeout))
 	if err != nil {
-		return frame, false, errors.Wrap(err, "frame read")
+		return false, errors.Wrap(err, "frame read")
 	}
 
 	frameLength, _, err := decodeUint32(buffer[:4])
 	if err != nil {
-		return frame, false, errors.Wrap(err, "frame read")
+		return false, errors.Wrap(err, "frame read")
 	}
 
 	if frameLength > maxFrameSize {
-		return frame, false, errors.New("frame length")
+		return false, errors.New("frame length")
 	}
 
 	frame.data = buffer[:frameLength]
@@ -106,12 +106,12 @@ func (c *codec) decodeFrame(buffer []byte) (frame, bool, error) {
 	// read the frame data
 	_, err = io.ReadFull(c.buff, frame.data)
 	if err != nil {
-		return frame, false, errors.Wrap(err, "frame read")
+		return false, errors.Wrap(err, "frame read")
 	}
 
 	off := 0
 	if len(frame.data) == 0 {
-		return frame, false, fmt.Errorf("frame read: empty frame")
+		return false, fmt.Errorf("frame read: empty frame")
 	}
 
 	frame.ftype = frameType(frame.data[0])
@@ -119,7 +119,7 @@ func (c *codec) decodeFrame(buffer []byte) (frame, bool, error) {
 
 	flags, n, err := decodeUint32(frame.data[off:])
 	if err != nil {
-		return frame, false, errors.Wrap(err, "frame read")
+		return false, errors.Wrap(err, "frame read")
 	}
 
 	off += n
@@ -127,29 +127,35 @@ func (c *codec) decodeFrame(buffer []byte) (frame, bool, error) {
 
 	streamID, n, err := decodeVarint(frame.data[off:])
 	if err != nil {
-		return frame, false, errors.Wrap(err, "frame read")
+		return false, errors.Wrap(err, "frame read")
 	}
 	off += n
 
 	frameID, n, err := decodeVarint(frame.data[off:])
 	if err != nil {
-		return frame, false, errors.Wrap(err, "frame read")
+		return false, errors.Wrap(err, "frame read")
 	}
 	off += n
 
 	frame.streamID = streamID
 	frame.frameID = frameID
 	frame.data = frame.data[off:]
-	return frame, true, nil
+	return true, nil
 }
 
 func (c *codec) encodeFrame(f frame) error {
+	if f.originalData != nil {
+		defer pool.Put(f.originalData)
+	}
+
 	err := c.conn.SetWriteDeadline(time.Now().Add(c.cfg.WriteTimeout))
 	if err != nil {
 		return errors.Wrap(err, "disconnect")
 	}
 
-	header := make([]byte, 19)
+	header := pool.Get(17)
+	defer pool.Put(header)
+
 	off := 4
 
 	header[off] = byte(f.ftype)

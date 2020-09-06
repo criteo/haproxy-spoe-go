@@ -1,17 +1,16 @@
 package spoe
 
 import (
-	"testing"
-
 	"github.com/stretchr/testify/require"
 )
 
-func notifyFrame(t *testing.T) frame {
+func notifyFrame(t require.TestingT) frame {
+	b := make([]byte, maxFrameSize)
 	f := frame{
 		ftype:    frameTypeHaproxyNotify,
 		streamID: 1,
 		frameID:  2,
-		data:     make([]byte, maxFrameSize),
+		data:     b,
 	}
 
 	m := 0
@@ -43,7 +42,7 @@ func notifyFrame(t *testing.T) frame {
 	return f
 }
 
-func helloFrame(t *testing.T) frame {
+func helloFrame(t require.TestingT) frame {
 	f := frame{
 		ftype:    frameTypeHaproxyHello,
 		flags:    frameFlagFin,

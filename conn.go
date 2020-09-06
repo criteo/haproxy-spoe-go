@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 )
+
+const workerIdleTimeout = 2 * time.Second
 
 type conn struct {
 	net.Conn
@@ -16,6 +19,8 @@ type conn struct {
 	frameSize int
 
 	engineID string
+
+	notifyTasks chan frame
 }
 
 func (c *conn) run(a *Agent) error {
@@ -26,7 +31,8 @@ func (c *conn) run(a *Agent) error {
 
 	cod := newCodec(c.Conn, c.cfg)
 
-	myframe, ok, err := cod.decodeFrame(make([]byte, maxFrameSize))
+	myframe := frame{}
+	ok, err := cod.decodeFrame(&myframe)
 	if err != nil {
 		return err
 	}
@@ -74,12 +80,6 @@ func (c *conn) run(a *Agent) error {
 		return nil
 	}
 
-	pool := &sync.Pool{
-		New: func() interface{} {
-			return make([]byte, c.frameSize)
-		},
-	}
-
 	a.acksLock.Lock()
 	if _, ok := a.acks[acksKey]; !ok {
 		a.acks[acksKey] = make(chan frame)
@@ -112,19 +112,18 @@ func (c *conn) run(a *Agent) error {
 			select {
 			case <-done:
 				return
-			case myframe := <-acks:
-				err = cod.encodeFrame(myframe)
+			case frame := <-acks:
+				err = cod.encodeFrame(frame)
 				if err != nil {
 					log.Errorf("spoe: %s", err)
 					continue
 				}
-				pool.Put(myframe.originalData)
 			}
 		}
 	}()
 
 	for {
-		myframe, ok, err := cod.decodeFrame(pool.Get().([]byte))
+		ok, err := cod.decodeFrame(&myframe)
 		if err != nil {
 			return err
 		}
@@ -134,15 +133,11 @@ func (c *conn) run(a *Agent) error {
 
 		switch myframe.ftype {
 		case frameTypeHaproxyNotify:
-			go func() {
-				myframe, err = c.handleNotify(myframe)
-				if err != nil {
-					log.Errorf("spoe: %s", err)
-					return
-				}
-
-				acks <- myframe
-			}()
+			select {
+			case c.notifyTasks <- myframe:
+			default:
+				go c.runWorker(myframe, acks)
+			}
 
 		case frameTypeHaproxyDiscon:
 			err := c.handleDisconnect(myframe)
@@ -154,5 +149,27 @@ func (c *conn) run(a *Agent) error {
 		default:
 			return fmt.Errorf("spoe: frame type %x is not handled", myframe.ftype)
 		}
+	}
+}
+
+func (c *conn) runWorker(f frame, acks chan frame) {
+	err := c.handleNotify(f, acks)
+	if err != nil {
+		log.Errorf("spoe: %s", err)
+	}
+	timeout := time.NewTimer(workerIdleTimeout)
+
+	for {
+		select {
+		case f := <-c.notifyTasks:
+			err := c.handleNotify(f, acks)
+			if err != nil {
+				log.Errorf("spoe: %s", err)
+			}
+			timeout.Reset(workerIdleTimeout)
+		case <-timeout.C:
+			return
+		}
+
 	}
 }
