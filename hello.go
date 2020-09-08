@@ -27,7 +27,7 @@ func (c *conn) handleHello(frame frame) (frame, map[string]bool, bool, error) {
 		return frame, nil, false, errors.Wrap(err, "hello")
 	}
 
-	log.Infof("spoe: hello from %s: %+v", c.Conn.RemoteAddr(), data)
+	log.Debugf("spoe: hello from %s: %+v", c.Conn.RemoteAddr(), data)
 
 	remoteFrameSize, ok := data[helloKeyMaxFrameSize].(uint)
 	if !ok {

@@ -1,7 +1,6 @@
 package spoe
 
 import (
-	"bufio"
 	"fmt"
 	"net"
 	"sync"
@@ -11,9 +10,9 @@ import (
 
 type conn struct {
 	net.Conn
+	cfg Config
 
 	handler   Handler
-	buff      *bufio.ReadWriter
 	frameSize int
 
 	engineID string
@@ -25,7 +24,9 @@ func (c *conn) run(a *Agent) error {
 	done := make(chan struct{})
 	defer close(done)
 
-	myframe, ok, err := decodeFrame(c, make([]byte, maxFrameSize))
+	cod := newCodec(c.Conn, c.cfg)
+
+	myframe, ok, err := cod.decodeFrame(make([]byte, maxFrameSize))
 	if err != nil {
 		return err
 	}
@@ -42,6 +43,21 @@ func (c *conn) run(a *Agent) error {
 		return err
 	}
 
+	disconnError := spoeErrorNone
+	defer func() {
+		df, err := c.disconnectFrame(disconnError)
+		if err != nil {
+			log.Errorf("spoe: %s", err)
+			return
+		}
+
+		err = cod.encodeFrame(df)
+		if err != nil {
+			log.Errorf("spoe: %s", err)
+			return
+		}
+	}()
+
 	acksKey := acksKey{
 		FrameSize: c.frameSize,
 		Engine:    c.engineID,
@@ -50,11 +66,7 @@ func (c *conn) run(a *Agent) error {
 		acksKey.Conn = c.Conn
 	}
 
-	err = encodeFrame(c.buff, myframe)
-	if err != nil {
-		return err
-	}
-	err = c.buff.Flush()
+	err = cod.encodeFrame(myframe)
 	if err != nil {
 		return err
 	}
@@ -101,12 +113,7 @@ func (c *conn) run(a *Agent) error {
 			case <-done:
 				return
 			case myframe := <-acks:
-				err = encodeFrame(c.buff, myframe)
-				if err != nil {
-					log.Errorf("spoe: %s", err)
-					continue
-				}
-				err = c.buff.Flush()
+				err = cod.encodeFrame(myframe)
 				if err != nil {
 					log.Errorf("spoe: %s", err)
 					continue
@@ -117,7 +124,7 @@ func (c *conn) run(a *Agent) error {
 	}()
 
 	for {
-		myframe, ok, err := decodeFrame(c, pool.Get().([]byte))
+		myframe, ok, err := cod.decodeFrame(pool.Get().([]byte))
 		if err != nil {
 			return err
 		}
@@ -126,7 +133,6 @@ func (c *conn) run(a *Agent) error {
 		}
 
 		switch myframe.ftype {
-
 		case frameTypeHaproxyNotify:
 			go func() {
 				myframe, err = c.handleNotify(myframe)
@@ -141,7 +147,7 @@ func (c *conn) run(a *Agent) error {
 		case frameTypeHaproxyDiscon:
 			err := c.handleDisconnect(myframe)
 			if err != nil {
-				log.Errorf("spoe: %s", err)
+				return err
 			}
 			return nil
 

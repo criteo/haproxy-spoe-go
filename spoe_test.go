@@ -1,11 +1,9 @@
 package spoe
 
 import (
-	"fmt"
 	"net"
 	"testing"
 
-	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
 )
 
@@ -14,10 +12,7 @@ func TestSPOE(t *testing.T) {
 		return nil, nil
 	})
 
-	port, err := freeport.GetFreePort()
-	require.NoError(t, err)
-	addr := fmt.Sprintf("127.0.0.1:%d", port)
-	lis, err := net.Listen("tcp", addr)
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 
 	agentError := make(chan error)
@@ -25,14 +20,16 @@ func TestSPOE(t *testing.T) {
 		agentError <- spoa.Serve(lis)
 	}()
 
-	client, err := net.Dial("tcp", addr)
+	client, err := net.Dial("tcp", lis.Addr().String())
 	require.NoError(t, err)
+
+	cod := newCodec(client, defaultConfig)
 
 	// hello
 	helloReq := helloFrame(t)
-	require.NoError(t, encodeFrame(client, helloReq))
+	require.NoError(t, cod.encodeFrame(helloReq))
 
-	helloRes, ok, err := decodeFrame(client, make([]byte, maxFrameSize))
+	helloRes, ok, err := cod.decodeFrame(make([]byte, maxFrameSize))
 	require.True(t, ok)
 	require.NoError(t, err)
 
@@ -40,9 +37,9 @@ func TestSPOE(t *testing.T) {
 
 	// notify
 	notifyReq := notifyFrame(t)
-	require.NoError(t, encodeFrame(client, notifyReq))
+	require.NoError(t, cod.encodeFrame(notifyReq))
 
-	notifyRes, ok, err := decodeFrame(client, make([]byte, maxFrameSize))
+	notifyRes, ok, err := cod.decodeFrame(make([]byte, maxFrameSize))
 	require.True(t, ok)
 	require.NoError(t, err)
 

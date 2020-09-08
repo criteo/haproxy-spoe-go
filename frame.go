@@ -1,17 +1,24 @@
 package spoe
 
 import (
+	"bufio"
 	"encoding/binary"
 	"fmt"
 	"io"
+	"net"
+	"os"
+	"time"
+
+	gerrs "errors"
 
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 type frameType byte
 
 const (
-	frameTypeUnset = 0
+	frameTypeUnset frameType = 0
 
 	// Frames sent by HAProxy
 	frameTypeHaproxyHello  frameType = 1
@@ -40,20 +47,51 @@ type frame struct {
 	originalData []byte
 }
 
-func decodeFrame(r io.Reader, buffer []byte) (frame, bool, error) {
+type codec struct {
+	conn net.Conn
+	buff *bufio.ReadWriter
+	cfg  Config
+}
+
+func newCodec(conn net.Conn, cfg Config) *codec {
+	return &codec{
+		conn: conn,
+		buff: bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn)),
+		cfg:  cfg,
+	}
+}
+
+func (c *codec) decodeFrame(buffer []byte) (frame, bool, error) {
 	frame := frame{
 		originalData: buffer,
 	}
 
+	err := c.conn.SetReadDeadline(time.Now().Add(c.cfg.IdleTimeout))
+	if err != nil {
+		return frame, false, errors.Wrap(err, "frame read")
+	}
+
 	// read the frame length
-	_, err := io.ReadFull(r, buffer[:4])
+	_, err = io.ReadFull(c.buff, buffer[:4])
 	// EOF on first read is not an error
 	if err == io.EOF {
+		return frame, false, nil
+	}
+	// special case for idle timeout
+	if gerrs.Is(err, os.ErrDeadlineExceeded) {
+		log.Debug("spoe: connection idle timeout")
 		return frame, false, nil
 	}
 	if err != nil {
 		return frame, false, errors.Wrap(err, "frame read")
 	}
+
+	// we have a frame, switch to read timeout
+	err = c.conn.SetDeadline(time.Now().Add(c.cfg.ReadTimeout))
+	if err != nil {
+		return frame, false, errors.Wrap(err, "frame read")
+	}
+
 	frameLength, _, err := decodeUint32(buffer[:4])
 	if err != nil {
 		return frame, false, errors.Wrap(err, "frame read")
@@ -66,7 +104,7 @@ func decodeFrame(r io.Reader, buffer []byte) (frame, bool, error) {
 	frame.data = buffer[:frameLength]
 
 	// read the frame data
-	_, err = io.ReadFull(r, frame.data)
+	_, err = io.ReadFull(c.buff, frame.data)
 	if err != nil {
 		return frame, false, errors.Wrap(err, "frame read")
 	}
@@ -105,7 +143,12 @@ func decodeFrame(r io.Reader, buffer []byte) (frame, bool, error) {
 	return frame, true, nil
 }
 
-func encodeFrame(w io.Writer, f frame) error {
+func (c *codec) encodeFrame(f frame) error {
+	err := c.conn.SetWriteDeadline(time.Now().Add(c.cfg.WriteTimeout))
+	if err != nil {
+		return errors.Wrap(err, "disconnect")
+	}
+
 	header := make([]byte, 19)
 	off := 4
 
@@ -129,12 +172,17 @@ func encodeFrame(w io.Writer, f frame) error {
 
 	binary.BigEndian.PutUint32(header, uint32(off-4+len(f.data)))
 
-	_, err = w.Write(header[:off])
+	_, err = c.buff.Write(header[:off])
 	if err != nil {
 		return errors.Wrap(err, "write frame")
 	}
 
-	_, err = w.Write(f.data)
+	_, err = c.buff.Write(f.data)
+	if err != nil {
+		return errors.Wrap(err, "write frame")
+	}
+
+	err = c.buff.Flush()
 	if err != nil {
 		return errors.Wrap(err, "write frame")
 	}
