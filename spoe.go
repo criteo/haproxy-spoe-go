@@ -77,13 +77,15 @@ func (a *Agent) Serve(lis net.Listener) error {
 			return err
 		}
 
-		err = c.(*net.TCPConn).SetWriteBuffer(maxFrameSize * 4)
-		if err != nil {
-			return err
-		}
-		err = c.(*net.TCPConn).SetReadBuffer(maxFrameSize * 4)
-		if err != nil {
-			return err
+		if tcp, ok := c.(*net.TCPConn); ok {
+			err = tcp.SetWriteBuffer(maxFrameSize * 4)
+			if err != nil {
+				return err
+			}
+			err = tcp.SetReadBuffer(maxFrameSize * 4)
+			if err != nil {
+				return err
+			}
 		}
 
 		log.Debugf("spoe: connection from %s", c.RemoteAddr())

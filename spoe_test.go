@@ -1,7 +1,10 @@
 package spoe
 
 import (
+	"io/ioutil"
 	"net"
+	"os"
+	"path/filepath"
 	"testing"
 
 	pool "github.com/libp2p/go-buffer-pool"
@@ -23,6 +26,54 @@ func TestSPOE(t *testing.T) {
 	}()
 
 	client, err := net.Dial("tcp", lis.Addr().String())
+	require.NoError(t, err)
+
+	cod := newCodec(client, defaultConfig)
+
+	// hello
+	helloReq := helloFrame(t)
+	require.NoError(t, cod.encodeFrame(helloReq))
+
+	helloRes := frame{}
+	ok, err := cod.decodeFrame(&helloRes)
+	require.True(t, ok)
+	require.NoError(t, err)
+
+	require.Equal(t, helloReq.streamID, helloRes.streamID)
+
+	// notify
+	notifyReq := notifyFrame(t)
+	require.NoError(t, cod.encodeFrame(notifyReq))
+
+	notifyRes := frame{}
+	ok, err = cod.decodeFrame(&notifyRes)
+	require.True(t, ok)
+	require.NoError(t, err)
+
+	require.Equal(t, notifyReq.streamID, notifyRes.streamID)
+}
+
+func TestSPOEUnix(t *testing.T) {
+	spoa := New(func(msgs *MessageIterator) ([]Action, error) {
+		return nil, nil
+	})
+
+	name, err := ioutil.TempDir("/tmp", "http-mirror-test")
+	require.NoError(t, err)
+	defer os.RemoveAll(name)
+
+	sock := filepath.Join(name, "spoe.sock")
+
+	lis, err := net.Listen("unix", sock)
+	require.NoError(t, err)
+	defer lis.Close()
+
+	agentError := make(chan error)
+	go func() {
+		agentError <- spoa.Serve(lis)
+	}()
+
+	client, err := net.Dial("unix", sock)
 	require.NoError(t, err)
 
 	cod := newCodec(client, defaultConfig)
