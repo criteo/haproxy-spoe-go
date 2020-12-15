@@ -60,6 +60,7 @@ func TestNotify(t *testing.T) {
 			ok := msgs.Next()
 			require.True(t, ok)
 			require.Equal(t, "message-1", msgs.Message.Name)
+			require.Equal(t, 2, msgs.Message.Args.Count())
 			args := msgs.Message.Args.Map()
 			require.Equal(t, map[string]interface{}{
 				"key-1": "value1",
@@ -69,6 +70,7 @@ func TestNotify(t *testing.T) {
 			ok = msgs.Next()
 			require.True(t, ok)
 			require.Equal(t, "message-2", msgs.Message.Name)
+			require.Equal(t, 2, msgs.Message.Args.Count())
 			args = msgs.Message.Args.Map()
 			require.Equal(t, map[string]interface{}{
 				"key2-1": "value21",

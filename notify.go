@@ -34,12 +34,16 @@ func (i *ArgIterator) Next() bool {
 }
 
 func (i *ArgIterator) Map() map[string]interface{} {
-	res := map[string]interface{}{}
+	res := make(map[string]interface{}, i.count)
 	for i.Next() {
 		res[i.Arg.Name] = i.Arg.Value
 	}
 
 	return res
+}
+
+func (i *ArgIterator) Count() int {
+	return i.count
 }
 
 type Message struct {
