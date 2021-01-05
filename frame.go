@@ -11,7 +11,6 @@ import (
 
 	gerrs "errors"
 
-	pool "github.com/libp2p/go-buffer-pool"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
@@ -63,7 +62,7 @@ func newCodec(conn net.Conn, cfg Config) *codec {
 }
 
 func (c *codec) decodeFrame(frame *frame) (bool, error) {
-	buffer := pool.Get(maxFrameSize)
+	buffer := make([]byte, maxFrameSize)
 	frame.originalData = buffer
 
 	err := c.conn.SetReadDeadline(time.Now().Add(c.cfg.IdleTimeout))
@@ -144,17 +143,13 @@ func (c *codec) decodeFrame(frame *frame) (bool, error) {
 }
 
 func (c *codec) encodeFrame(f frame) error {
-	if f.originalData != nil {
-		defer pool.Put(f.originalData)
-	}
 
 	err := c.conn.SetWriteDeadline(time.Now().Add(c.cfg.WriteTimeout))
 	if err != nil {
 		return errors.Wrap(err, "disconnect")
 	}
 
-	header := pool.Get(17)
-	defer pool.Put(header)
+	header := make([]byte, 17)
 
 	off := 4
 
