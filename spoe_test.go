@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	pool "github.com/libp2p/go-buffer-pool"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
@@ -144,6 +143,5 @@ func BenchmarkSPOE(b *testing.B) {
 		if err != nil {
 			b.Error(err)
 		}
-		pool.Put(res.originalData)
 	}
 }
