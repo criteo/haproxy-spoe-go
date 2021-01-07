@@ -2,7 +2,6 @@ package spoe
 
 import (
 	"fmt"
-
 	"github.com/pkg/errors"
 )
 
@@ -41,14 +40,22 @@ func (c *conn) handleDisconnect(f frame) error {
 	}
 
 	code, ok := data["status-code"].(uint)
-	if !ok || code != 0 {
+	if !ok {
 		message, _ := data["message"].(string)
 		if message == "" {
 			message = "unknown error "
 		}
-
+		return fmt.Errorf("disconnect error without status-code and message: %s", message)
+	}
+	
+	message, ok_message := spoeErrorMessages[spoeError(code)]
+	if ok_message {
 		return fmt.Errorf("disconnect error: %s", message)
 	}
 
-	return nil
+	message, _ = data["message"].(string)
+	if message == "" {
+			message = "unknown error "
+	}
+	return fmt.Errorf("disconnect error (without status-code) : %s", message)
 }
