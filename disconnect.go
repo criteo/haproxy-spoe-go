@@ -40,7 +40,7 @@ func (c *conn) handleDisconnect(f frame) error {
 		return errors.Wrap(err, "disconnect")
 	}
 
-	code, ok := data["status-code"].(uint32)
+	code, ok := data["status-code"].(uint)
 	if !ok || code != 0 {
 		message, _ := data["message"].(string)
 		if message == "" {
