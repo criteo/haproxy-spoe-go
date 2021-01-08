@@ -3,6 +3,7 @@ package spoe
 import (
 	"fmt"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 func (c *conn) disconnectFrame(e spoeError) (frame, error) {
@@ -35,6 +36,7 @@ func (c *conn) disconnectFrame(e spoeError) (frame, error) {
 
 func (c *conn) handleDisconnect(f frame) error {
 	data, _, err := decodeKVs(f.data, -1)
+	log.Debugf("spoe: Disconnect from %s: %+v", c.Conn.RemoteAddr(), data)
 	if err != nil {
 		return errors.Wrap(err, "disconnect")
 	}
@@ -47,7 +49,11 @@ func (c *conn) handleDisconnect(f frame) error {
 		}
 		return fmt.Errorf("disconnect error without status-code and message: %s", message)
 	}
-	
+
+	if spoeError(code) == spoeErrorTimeout || spoeError(code) == spoeErrorNone {
+		return nil
+	}
+
 	message, ok_message := spoeErrorMessages[spoeError(code)]
 	if ok_message {
 		return fmt.Errorf("disconnect error: %s", message)
