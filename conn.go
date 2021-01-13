@@ -53,7 +53,7 @@ func (c *conn) run(a *Agent) error {
 	defer func() {
 		df, err := c.disconnectFrame(disconnError)
 		if err != nil {
-			log.Errorf("spoe: %s", err)
+			log.Warnf("spoe: %s", err)
 			return
 		}
 
@@ -155,7 +155,7 @@ func (c *conn) run(a *Agent) error {
 func (c *conn) runWorker(f frame, acks chan frame) {
 	err := c.handleNotify(f, acks)
 	if err != nil {
-		log.Errorf("spoe: %s", err)
+		log.Warnf("spoe: %s", err)
 	}
 	timeout := time.NewTimer(workerIdleTimeout)
 
@@ -164,7 +164,7 @@ func (c *conn) runWorker(f frame, acks chan frame) {
 		case f := <-c.notifyTasks:
 			err := c.handleNotify(f, acks)
 			if err != nil {
-				log.Errorf("spoe: %s", err)
+				log.Warnf("spoe: %s", err)
 			}
 			timeout.Reset(workerIdleTimeout)
 		case <-timeout.C:

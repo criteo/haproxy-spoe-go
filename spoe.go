@@ -99,7 +99,7 @@ func (a *Agent) Serve(lis net.Listener) error {
 			}
 			err := c.run(a)
 			if err != nil {
-				log.Errorf("spoe: error handling connection: %s", err)
+				log.Warnf("spoe: error handling connection: %s", err)
 			}
 		}()
 	}
