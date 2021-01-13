@@ -54,6 +54,11 @@ func (c *conn) handleDisconnect(f Frame) error {
 		return nil
 	}
 
+	if spoeError(code) == spoeErrorFragNotSupported {
+		// TODO: understand why we have this message
+		log.Info("spoe: Disconnect with \"fragmentation not supported\"")
+		return nil
+	}
 	message, okMessage := spoeErrorMessages[spoeError(code)]
 	if okMessage {
 		return fmt.Errorf("disconnect error: %s", message)
