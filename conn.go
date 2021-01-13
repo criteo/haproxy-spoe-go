@@ -53,13 +53,13 @@ func (c *conn) run(a *Agent) error {
 	defer func() {
 		df, err := c.disconnectFrame(disconnError)
 		if err != nil {
-			log.Warnf("spoe: %s", err)
+			log.Errorf("spoe disconnectFrame error : %s", err)
 			return
 		}
 
 		err = cod.encodeFrame(df)
 		if err != nil {
-			log.Errorf("spoe: %s", err)
+			log.Infof("spoe session ending with: %s", err)
 			return
 		}
 	}()
@@ -112,7 +112,7 @@ func (c *conn) run(a *Agent) error {
 			case frame := <-frames:
 				err = cod.encodeFrame(frame)
 				if err != nil {
-					log.Errorf("spoe: %s", err)
+					log.Errorf("spoe reply problem: %s", err)
 					continue
 				}
 			}
@@ -152,7 +152,7 @@ func (c *conn) run(a *Agent) error {
 func (c *conn) runWorker(f Frame, frames chan Frame) {
 	err := c.handleNotify(f, frames)
 	if err != nil {
-		log.Warnf("spoe: %s", err)
+		log.Errorf("spoe error during first notify handle: %s", err)
 	}
 	timeout := time.NewTimer(workerIdleTimeout)
 
@@ -161,7 +161,7 @@ func (c *conn) runWorker(f Frame, frames chan Frame) {
 		case f := <-c.notifyTasks:
 			err := c.handleNotify(f, frames)
 			if err != nil {
-				log.Warnf("spoe: %s", err)
+				log.Errorf("spoe error during notify handle: %s", err)
 			}
 			timeout.Reset(workerIdleTimeout)
 		case <-timeout.C:
