@@ -3,7 +3,7 @@ package spoe
 import (
 	"fmt"
 	"net"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -80,30 +80,28 @@ func (c *conn) run(a *Agent) error {
 		return nil
 	}
 
-	a.acksLock.Lock()
-	if _, ok := a.acks[acksKey]; !ok {
-		a.acks[acksKey] = make(chan frame)
-		wg := &sync.WaitGroup{}
-		wg.Add(1)
-		a.acksWG[acksKey] = wg
+	defer func() {
+		a.acksLock.Lock()
+		defer a.acksLock.Unlock()
 
-		go func() {
-			// wait until there is no more connection for this engine-id
-			// before deleting it
-			wg.Wait()
-
-			a.acksLock.Lock()
-			delete(a.acksWG, acksKey)
+		new := atomic.AddInt32(&a.acks[acksKey].count, -1)
+		if new == 0 {
 			delete(a.acks, acksKey)
-			a.acksLock.Unlock()
-		}()
-	} else {
-		a.acksWG[acksKey].Add(1)
-	}
-	// signal that this connection is done using the engine
-	defer a.acksWG[acksKey].Done()
+		}
+	}()
 
-	acks := a.acks[acksKey]
+	var acks chan frame
+	a.acksLock.Lock()
+	eng, ok := a.acks[acksKey]
+	if ok {
+		acks = eng.acks
+		atomic.AddInt32(&eng.count, 1)
+	} else {
+		a.acks[acksKey] = &engine{
+			acks:  make(chan frame),
+			count: 1,
+		}
+	}
 	a.acksLock.Unlock()
 
 	// run reply loop

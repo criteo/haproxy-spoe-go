@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"sync"
 	"time"
 
 	gerrs "errors"
@@ -52,6 +53,7 @@ type codec struct {
 	conn net.Conn
 	buff *bufio.ReadWriter
 	cfg  Config
+	pool *sync.Pool
 }
 
 func newCodec(conn net.Conn, cfg Config) *codec {
@@ -59,11 +61,16 @@ func newCodec(conn net.Conn, cfg Config) *codec {
 		conn: conn,
 		buff: bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn)),
 		cfg:  cfg,
+		pool: &sync.Pool{
+			New: func() interface{} {
+				return make([]byte, maxFrameSize)
+			},
+		},
 	}
 }
 
 func (c *codec) decodeFrame(frame *frame) (bool, error) {
-	buffer := pool.Get(maxFrameSize)
+	buffer := c.pool.Get().([]byte)
 	frame.originalData = buffer
 
 	err := c.conn.SetReadDeadline(time.Now().Add(c.cfg.IdleTimeout))
@@ -145,7 +152,7 @@ func (c *codec) decodeFrame(frame *frame) (bool, error) {
 
 func (c *codec) encodeFrame(f frame) error {
 	if f.originalData != nil {
-		defer pool.Put(f.originalData)
+		defer c.pool.Put(f.originalData)
 	}
 
 	err := c.conn.SetWriteDeadline(time.Now().Add(c.cfg.WriteTimeout))

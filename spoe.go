@@ -35,6 +35,11 @@ type acksKey struct {
 	Conn      net.Conn
 }
 
+type engine struct {
+	acks  chan frame
+	count int32
+}
+
 type Agent struct {
 	Handler Handler
 	cfg     Config
@@ -42,8 +47,7 @@ type Agent struct {
 	maxFrameSize int
 
 	acksLock sync.Mutex
-	acks     map[acksKey]chan frame
-	acksWG   map[acksKey]*sync.WaitGroup
+	acks     map[acksKey]*engine
 }
 
 func New(h Handler) *Agent {
@@ -54,8 +58,7 @@ func NewWithConfig(h Handler, cfg Config) *Agent {
 	return &Agent{
 		Handler: h,
 		cfg:     cfg,
-		acks:    make(map[acksKey]chan frame),
-		acksWG:  make(map[acksKey]*sync.WaitGroup),
+		acks:    make(map[acksKey]*engine),
 	}
 }
 
