@@ -29,7 +29,7 @@ var defaultConfig = Config{
 	IdleTimeout:  30 * time.Second,
 }
 
-type FrameKey struct {
+type EngKey struct {
 	FrameSize int
 	Engine    string
 	Conn      net.Conn
@@ -41,21 +41,24 @@ type Agent struct {
 
 	maxFrameSize int
 
-	framesLock sync.Mutex
-	frames     map[FrameKey]chan Frame
-	framesWG   map[FrameKey]*sync.WaitGroup
+	engLock sync.Mutex
+	engines  map[EngKey]*Engine
 }
 
 func New(h Handler) *Agent {
 	return NewWithConfig(h, defaultConfig)
 }
 
+type Engine struct {
+	frames    chan Frame
+	count     int32
+}
+
 func NewWithConfig(h Handler, cfg Config) *Agent {
 	return &Agent{
-		Handler:  h,
-		cfg:      cfg,
-		frames:   make(map[FrameKey]chan Frame),
-		framesWG: make(map[FrameKey]*sync.WaitGroup),
+		Handler: h,
+		cfg:     cfg,
+		engines: make(map[EngKey]*Engine),
 	}
 }
 
