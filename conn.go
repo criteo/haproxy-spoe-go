@@ -3,7 +3,7 @@ package spoe
 import (
 	"fmt"
 	"net"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -64,13 +64,36 @@ func (c *conn) run(a *Agent) error {
 		}
 	}()
 
-	framesKey := FrameKey{
+	engKey := EngKey{
 		FrameSize: c.frameSize,
 		Engine:    c.engineID,
 	}
 	if !capabilities[capabilityAsync] {
-		framesKey.Conn = c.Conn
+		engKey.Conn = c.Conn
 	}
+	var frames chan Frame
+
+	a.engLock.Lock()
+	eng, ok := a.engines[engKey]
+	if ok {
+		frames = eng.frames
+		atomic.AddInt32(&eng.count, 1)
+	} else {
+		frames = make(chan Frame)
+		a.engines[engKey] = &Engine{
+			frames:    frames,
+			count:     1,
+		}
+	}
+	a.engLock.Unlock()
+	defer func() {
+		a.engLock.Lock()
+		new := atomic.AddInt32(&a.engines[engKey].count, -1)
+		if new == 0 {
+			delete(a.engines, engKey)
+		}
+		a.engLock.Unlock()
+	}()
 
 	err = cod.encodeFrame(myframe)
 	if err != nil {
@@ -79,32 +102,6 @@ func (c *conn) run(a *Agent) error {
 	if healcheck {
 		return nil
 	}
-
-	a.framesLock.Lock()
-	if _, ok := a.frames[framesKey]; !ok {
-		a.frames[framesKey] = make(chan Frame)
-		wg := &sync.WaitGroup{}
-		wg.Add(1)
-		a.framesWG[framesKey] = wg
-
-		go func() {
-			// wait until there is no more connection for this engine-id
-			// before deleting it
-			wg.Wait()
-
-			a.framesLock.Lock()
-			delete(a.framesWG, framesKey)
-			delete(a.frames, framesKey)
-			a.framesLock.Unlock()
-		}()
-	} else {
-		a.framesWG[framesKey].Add(1)
-	}
-	// signal that this connection is done using the engine
-	defer a.framesWG[framesKey].Done()
-
-	frames := a.frames[framesKey]
-	a.framesLock.Unlock()
 
 	// run reply loop
 	go func() {
