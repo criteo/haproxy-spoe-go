@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"syscall"
 	"time"
 
 	gerrs "errors"
@@ -81,7 +82,11 @@ func (c *codec) decodeFrame(frame *Frame) (bool, error) {
 		log.Debug("spoe: connection idle timeout")
 		return false, nil
 	}
+
 	if err != nil {
+		if errors.Is(err, syscall.ECONNRESET) {
+			return false, nil
+		}
 		return false, errors.Wrap(err, "frame read")
 	}
 
