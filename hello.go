@@ -15,7 +15,7 @@ const (
 	helloKeyVersion           = "version"
 	helloKeyCapabilities      = "capabilities"
 	helloKeyHealthcheck       = "healthcheck"
-	helloKeyEngineId          = "engine-id"
+	helloKeyEngineID          = "engine-id"
 
 	capabilityAsync      = "async"
 	capabilityPipelining = "pipelining"
@@ -71,7 +71,7 @@ func (c *conn) handleHello(frame frame) (frame, map[string]bool, bool, error) {
 		return frame, nil, false, fmt.Errorf("hello: expected pipelining capability")
 	}
 
-	c.engineID, _ = data[helloKeyEngineId].(string)
+	c.engineID, _ = data[helloKeyEngineID].(string)
 	if len(c.engineID) == 0 {
 		return frame, nil, false, fmt.Errorf("hello: engine-id not found")
 	}

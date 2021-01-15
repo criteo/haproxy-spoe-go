@@ -54,8 +54,8 @@ func (c *conn) handleDisconnect(f frame) error {
 		return nil
 	}
 
-	message, ok_message := spoeErrorMessages[spoeError(code)]
-	if ok_message {
+	message, okMessage := spoeErrorMessages[spoeError(code)]
+	if okMessage {
 		return fmt.Errorf("disconnect error: %s", message)
 	}
 
