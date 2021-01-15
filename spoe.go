@@ -29,7 +29,7 @@ var defaultConfig = Config{
 	IdleTimeout:  30 * time.Second,
 }
 
-type acksKey struct {
+type FrameKey struct {
 	FrameSize int
 	Engine    string
 	Conn      net.Conn
@@ -41,9 +41,9 @@ type Agent struct {
 
 	maxFrameSize int
 
-	acksLock sync.Mutex
-	acks     map[acksKey]chan frame
-	acksWG   map[acksKey]*sync.WaitGroup
+	framesLock sync.Mutex
+	frames     map[FrameKey]chan Frame
+	framesWG   map[FrameKey]*sync.WaitGroup
 }
 
 func New(h Handler) *Agent {
@@ -52,10 +52,10 @@ func New(h Handler) *Agent {
 
 func NewWithConfig(h Handler, cfg Config) *Agent {
 	return &Agent{
-		Handler: h,
-		cfg:     cfg,
-		acks:    make(map[acksKey]chan frame),
-		acksWG:  make(map[acksKey]*sync.WaitGroup),
+		Handler:  h,
+		cfg:      cfg,
+		frames:   make(map[FrameKey]chan Frame),
+		framesWG: make(map[FrameKey]*sync.WaitGroup),
 	}
 }
 
@@ -95,7 +95,7 @@ func (a *Agent) Serve(lis net.Listener) error {
 				Conn:        c,
 				handler:     a.Handler,
 				cfg:         a.cfg,
-				notifyTasks: make(chan frame),
+				notifyTasks: make(chan Frame),
 			}
 			err := c.run(a)
 			if err != nil {

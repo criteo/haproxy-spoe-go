@@ -6,8 +6,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (c *conn) disconnectFrame(e spoeError) (frame, error) {
-	f := frame{
+func (c *conn) disconnectFrame(e spoeError) (Frame, error) {
+	f := Frame{
 		frameID:  0,
 		streamID: 0,
 		ftype:    frameTypeAgentDiscon,
@@ -34,7 +34,7 @@ func (c *conn) disconnectFrame(e spoeError) (frame, error) {
 	return f, nil
 }
 
-func (c *conn) handleDisconnect(f frame) error {
+func (c *conn) handleDisconnect(f Frame) error {
 	data, _, err := decodeKVs(f.data, -1)
 	log.Debugf("spoe: Disconnect from %s: %+v", c.Conn.RemoteAddr(), data)
 	if err != nil {

@@ -8,7 +8,7 @@ import (
 
 func TestNotify(t *testing.T) {
 	data := make([]byte, maxFrameSize)
-	f := frame{
+	f := Frame{
 		data:         data,
 		originalData: data,
 	}
@@ -86,7 +86,7 @@ func TestNotify(t *testing.T) {
 		},
 	}
 
-	out := make(chan frame, 1)
+	out := make(chan Frame, 1)
 	err = conn.handleNotify(f, out)
 	require.Nil(t, err)
 	require.True(t, handlerCalled)

@@ -21,7 +21,7 @@ const (
 	capabilityPipelining = "pipelining"
 )
 
-func (c *conn) handleHello(frame frame) (frame, map[string]bool, bool, error) {
+func (c *conn) handleHello(frame Frame) (Frame, map[string]bool, bool, error) {
 	data, _, err := decodeKVs(frame.data, -1)
 	if err != nil {
 		return frame, nil, false, errors.Wrap(err, "hello")

@@ -33,7 +33,7 @@ func TestSPOE(t *testing.T) {
 	helloReq := helloFrame(t)
 	require.NoError(t, cod.encodeFrame(helloReq))
 
-	helloRes := frame{}
+	helloRes := Frame{}
 	ok, err := cod.decodeFrame(&helloRes)
 	require.True(t, ok)
 	require.NoError(t, err)
@@ -44,7 +44,7 @@ func TestSPOE(t *testing.T) {
 	notifyReq := notifyFrame(t)
 	require.NoError(t, cod.encodeFrame(notifyReq))
 
-	notifyRes := frame{}
+	notifyRes := Frame{}
 	ok, err = cod.decodeFrame(&notifyRes)
 	require.True(t, ok)
 	require.NoError(t, err)
@@ -81,7 +81,7 @@ func TestSPOEUnix(t *testing.T) {
 	helloReq := helloFrame(t)
 	require.NoError(t, cod.encodeFrame(helloReq))
 
-	helloRes := frame{}
+	helloRes := Frame{}
 	ok, err := cod.decodeFrame(&helloRes)
 	require.True(t, ok)
 	require.NoError(t, err)
@@ -92,7 +92,7 @@ func TestSPOEUnix(t *testing.T) {
 	notifyReq := notifyFrame(t)
 	require.NoError(t, cod.encodeFrame(notifyReq))
 
-	notifyRes := frame{}
+	notifyRes := Frame{}
 	ok, err = cod.decodeFrame(&notifyRes)
 	require.True(t, ok)
 	require.NoError(t, err)
@@ -126,7 +126,7 @@ func BenchmarkSPOE(b *testing.B) {
 	require.NoError(b, cod.encodeFrame(helloReq))
 
 	notifyReq := notifyFrame(b)
-	res := frame{}
+	res := Frame{}
 
 	ok, err := cod.decodeFrame(&res)
 	require.True(b, ok)

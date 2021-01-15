@@ -38,7 +38,7 @@ const (
 	frameFlagAbrt = 2
 )
 
-type frame struct {
+type Frame struct {
 	ftype        frameType
 	flags        frameFlag
 	streamID     int
@@ -61,7 +61,7 @@ func newCodec(conn net.Conn, cfg Config) *codec {
 	}
 }
 
-func (c *codec) decodeFrame(frame *frame) (bool, error) {
+func (c *codec) decodeFrame(frame *Frame) (bool, error) {
 	buffer := make([]byte, maxFrameSize)
 	frame.originalData = buffer
 
@@ -142,7 +142,7 @@ func (c *codec) decodeFrame(frame *frame) (bool, error) {
 	return true, nil
 }
 
-func (c *codec) encodeFrame(f frame) error {
+func (c *codec) encodeFrame(f Frame) error {
 
 	err := c.conn.SetWriteDeadline(time.Now().Add(c.cfg.WriteTimeout))
 	if err != nil {
