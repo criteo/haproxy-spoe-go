@@ -61,7 +61,7 @@ func (c *conn) handleDisconnect(f frame) error {
 
 	message, _ = data["message"].(string)
 	if message == "" {
-			message = "unknown error "
+		message = "unknown error "
 	}
 	return fmt.Errorf("disconnect error (without status-code) : %s", message)
 }
