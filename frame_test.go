@@ -9,12 +9,12 @@ import (
 )
 
 func TestFrameEncoding(t *testing.T) {
-	f := frame{
+	f := Frame{
 		ftype:    frameTypeAgentACK,
 		flags:    frameFlagFin,
 		streamID: 42,
 		frameID:  53,
-		data:     []byte("this is the frame data"),
+		data:     []byte("this is the Frame data"),
 	}
 
 	server, client := net.Pipe()
@@ -26,7 +26,7 @@ func TestFrameEncoding(t *testing.T) {
 		assert.Nil(t, err)
 	}()
 
-	decoded := frame{}
+	decoded := Frame{}
 	ok, err := rcod.decodeFrame(&decoded)
 	require.Nil(t, err)
 	require.True(t, ok)

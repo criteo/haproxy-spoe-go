@@ -4,9 +4,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func notifyFrame(t require.TestingT) frame {
+func notifyFrame(t require.TestingT) Frame {
 	b := make([]byte, maxFrameSize)
-	f := frame{
+	f := Frame{
 		ftype:    frameTypeHaproxyNotify,
 		streamID: 1,
 		frameID:  2,
@@ -42,8 +42,8 @@ func notifyFrame(t require.TestingT) frame {
 	return f
 }
 
-func helloFrame(t require.TestingT) frame {
-	f := frame{
+func helloFrame(t require.TestingT) Frame {
+	f := Frame{
 		ftype:    frameTypeHaproxyHello,
 		flags:    frameFlagFin,
 		streamID: 1,

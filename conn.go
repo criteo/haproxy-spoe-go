@@ -20,7 +20,7 @@ type conn struct {
 
 	engineID string
 
-	notifyTasks chan frame
+	notifyTasks chan Frame
 }
 
 func (c *conn) run(a *Agent) error {
@@ -31,7 +31,7 @@ func (c *conn) run(a *Agent) error {
 
 	cod := newCodec(c.Conn, c.cfg)
 
-	myframe := frame{}
+	myframe := Frame{}
 	ok, err := cod.decodeFrame(&myframe)
 	if err != nil {
 		return err
@@ -64,12 +64,12 @@ func (c *conn) run(a *Agent) error {
 		}
 	}()
 
-	acksKey := acksKey{
+	framesKey := FrameKey{
 		FrameSize: c.frameSize,
 		Engine:    c.engineID,
 	}
 	if !capabilities[capabilityAsync] {
-		acksKey.Conn = c.Conn
+		framesKey.Conn = c.Conn
 	}
 
 	err = cod.encodeFrame(myframe)
@@ -80,31 +80,31 @@ func (c *conn) run(a *Agent) error {
 		return nil
 	}
 
-	a.acksLock.Lock()
-	if _, ok := a.acks[acksKey]; !ok {
-		a.acks[acksKey] = make(chan frame)
+	a.framesLock.Lock()
+	if _, ok := a.frames[framesKey]; !ok {
+		a.frames[framesKey] = make(chan Frame)
 		wg := &sync.WaitGroup{}
 		wg.Add(1)
-		a.acksWG[acksKey] = wg
+		a.framesWG[framesKey] = wg
 
 		go func() {
 			// wait until there is no more connection for this engine-id
 			// before deleting it
 			wg.Wait()
 
-			a.acksLock.Lock()
-			delete(a.acksWG, acksKey)
-			delete(a.acks, acksKey)
-			a.acksLock.Unlock()
+			a.framesLock.Lock()
+			delete(a.framesWG, framesKey)
+			delete(a.frames, framesKey)
+			a.framesLock.Unlock()
 		}()
 	} else {
-		a.acksWG[acksKey].Add(1)
+		a.framesWG[framesKey].Add(1)
 	}
 	// signal that this connection is done using the engine
-	defer a.acksWG[acksKey].Done()
+	defer a.framesWG[framesKey].Done()
 
-	acks := a.acks[acksKey]
-	a.acksLock.Unlock()
+	frames := a.frames[framesKey]
+	a.framesLock.Unlock()
 
 	// run reply loop
 	go func() {
@@ -112,7 +112,7 @@ func (c *conn) run(a *Agent) error {
 			select {
 			case <-done:
 				return
-			case frame := <-acks:
+			case frame := <-frames:
 				err = cod.encodeFrame(frame)
 				if err != nil {
 					log.Errorf("spoe: %s", err)
@@ -136,7 +136,7 @@ func (c *conn) run(a *Agent) error {
 			select {
 			case c.notifyTasks <- myframe:
 			default:
-				go c.runWorker(myframe, acks)
+				go c.runWorker(myframe, frames)
 			}
 
 		case frameTypeHaproxyDiscon:
@@ -152,8 +152,8 @@ func (c *conn) run(a *Agent) error {
 	}
 }
 
-func (c *conn) runWorker(f frame, acks chan frame) {
-	err := c.handleNotify(f, acks)
+func (c *conn) runWorker(f Frame, frames chan Frame) {
+	err := c.handleNotify(f, frames)
 	if err != nil {
 		log.Warnf("spoe: %s", err)
 	}
@@ -162,7 +162,7 @@ func (c *conn) runWorker(f frame, acks chan frame) {
 	for {
 		select {
 		case f := <-c.notifyTasks:
-			err := c.handleNotify(f, acks)
+			err := c.handleNotify(f, frames)
 			if err != nil {
 				log.Warnf("spoe: %s", err)
 			}

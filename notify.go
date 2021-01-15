@@ -96,7 +96,7 @@ func (i *MessageIterator) Next() bool {
 	return true
 }
 
-func (c *conn) handleNotify(f frame, acks chan frame) error {
+func (c *conn) handleNotify(f Frame, acks chan Frame) error {
 	messages := &MessageIterator{
 		b: f.data,
 		Message: Message{
