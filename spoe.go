@@ -8,6 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/pkg/errors"
+	"golang.org/x/net/netutil"
 )
 
 const (
@@ -18,15 +19,17 @@ const (
 type Handler func(msgs *MessageIterator) ([]Action, error)
 
 type Config struct {
-	ReadTimeout  time.Duration
-	WriteTimeout time.Duration
-	IdleTimeout  time.Duration
+	ReadTimeout    time.Duration
+	WriteTimeout   time.Duration
+	IdleTimeout    time.Duration
+	MaxConnections int
 }
 
 var defaultConfig = Config{
-	ReadTimeout:  time.Second,
-	WriteTimeout: time.Second,
-	IdleTimeout:  30 * time.Second,
+	ReadTimeout:    time.Second,
+	WriteTimeout:   time.Second,
+	IdleTimeout:    30 * time.Second,
+	MaxConnections: 0,
 }
 
 type EngKey struct {
@@ -42,7 +45,7 @@ type Agent struct {
 	maxFrameSize int
 
 	engLock sync.Mutex
-	engines  map[EngKey]*Engine
+	engines map[EngKey]*Engine
 }
 
 func New(h Handler) *Agent {
@@ -50,8 +53,8 @@ func New(h Handler) *Agent {
 }
 
 type Engine struct {
-	frames    chan Frame
-	count     int32
+	frames chan Frame
+	count  int32
 }
 
 func NewWithConfig(h Handler, cfg Config) *Agent {
@@ -66,6 +69,11 @@ func (a *Agent) ListenAndServe(addr string) error {
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
 		return errors.Wrap(err, "spoe")
+	}
+	defer lis.Close()
+	if a.cfg.MaxConnections > 0 {
+		log.Infof("spoe: max connections: %d", a.cfg.MaxConnections)
+		return a.Serve(netutil.LimitListener(lis, a.cfg.MaxConnections))
 	}
 
 	return a.Serve(lis)
