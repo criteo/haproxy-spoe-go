@@ -1,4 +1,4 @@
-name: Go
+name: Tests
 
 on:
   push:
@@ -7,7 +7,6 @@ on:
     branches: [ master ]
 
 jobs:
-
   build:
     runs-on: ubuntu-latest
     steps:
@@ -20,3 +19,6 @@ jobs:
 
     - name: Test
       run: go test -v ./...
+
+    - name: Check code formatting using gofmt
+      uses: Jerome1337/gofmt-action@v1.0.4
