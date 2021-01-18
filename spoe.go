@@ -42,7 +42,7 @@ type Agent struct {
 	maxFrameSize int
 
 	engLock sync.Mutex
-	engines  map[EngKey]*Engine
+	engines map[EngKey]*Engine
 }
 
 func New(h Handler) *Agent {
@@ -50,8 +50,8 @@ func New(h Handler) *Agent {
 }
 
 type Engine struct {
-	frames    chan Frame
-	count     int32
+	frames chan Frame
+	count  int32
 }
 
 func NewWithConfig(h Handler, cfg Config) *Agent {
