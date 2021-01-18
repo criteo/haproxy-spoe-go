@@ -81,8 +81,8 @@ func (c *conn) run(a *Agent) error {
 	} else {
 		frames = make(chan Frame)
 		a.engines[engKey] = &Engine{
-			frames:    frames,
-			count:     1,
+			frames: frames,
+			count:  1,
 		}
 	}
 	a.engLock.Unlock()
