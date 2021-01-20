@@ -73,7 +73,7 @@ func (a *Agent) ListenAndServe(addr string) error {
 	defer lis.Close()
 	if a.cfg.MaxConnections > 0 {
 		log.Infof("spoe: max connections: %d", a.cfg.MaxConnections)
-		return a.Serve(netutil.LimitListener(lis, a.cfg.MaxConnections))
+		lis = netutil.LimitListener(lis, a.cfg.MaxConnections)
 	}
 
 	return a.Serve(lis)
