@@ -2,23 +2,26 @@ name: Tests
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: Set up Go
-      uses: actions/setup-go@v2
-      with:
-        go-version: 1.15
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.15
 
-    - name: Test
-      run: go test -v ./...
+      - name: Install haproxy
+        run: sudo apt-get install haproxy
 
-    - name: Check code formatting using gofmt
-      uses: Jerome1337/gofmt-action@v1.0.4
+      - name: Test
+        run: go test -v ./...
+
+      - name: Check code formatting using gofmt
+        uses: Jerome1337/gofmt-action@v1.0.4
