@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
-	"unsafe"
 
 	"github.com/pkg/errors"
 )
@@ -170,7 +169,7 @@ func decodeIPV6(b []byte) (net.IP, int, error) {
 
 func decodeString(b []byte) (string, int, error) {
 	b, n, err := decodeBytes(b)
-	return *(*string)(unsafe.Pointer(&b)), n, err
+	return string(b), n, err
 }
 
 func encodeString(b []byte, v string) (int, error) {
