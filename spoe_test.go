@@ -39,7 +39,7 @@ func TestSPOE(t *testing.T) {
 	require.True(t, ok)
 	require.NoError(t, err)
 
-	require.Equal(t, helloReq.streamID, helloRes.streamID)
+	require.Equal(t, helloReq.StreamID, helloRes.StreamID)
 
 	// notify
 	notifyReq := notifyFrame(t)
@@ -50,7 +50,7 @@ func TestSPOE(t *testing.T) {
 	require.True(t, ok)
 	require.NoError(t, err)
 
-	require.Equal(t, notifyReq.streamID, notifyRes.streamID)
+	require.Equal(t, notifyReq.StreamID, notifyRes.StreamID)
 }
 
 func TestSPOEUnix(t *testing.T) {
@@ -87,7 +87,7 @@ func TestSPOEUnix(t *testing.T) {
 	require.True(t, ok)
 	require.NoError(t, err)
 
-	require.Equal(t, helloReq.streamID, helloRes.streamID)
+	require.Equal(t, helloReq.StreamID, helloRes.StreamID)
 
 	// notify
 	notifyReq := notifyFrame(t)
@@ -98,7 +98,7 @@ func TestSPOEUnix(t *testing.T) {
 	require.True(t, ok)
 	require.NoError(t, err)
 
-	require.Equal(t, notifyReq.streamID, notifyRes.streamID)
+	require.Equal(t, notifyReq.StreamID, notifyRes.StreamID)
 }
 
 func BenchmarkSPOE(b *testing.B) {

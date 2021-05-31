@@ -43,7 +43,7 @@ const (
 type Frame struct {
 	ftype        frameType
 	flags        frameFlag
-	streamID     int
+	StreamID     int
 	frameID      int
 	data         []byte
 	originalData []byte
@@ -142,7 +142,7 @@ func (c *codec) decodeFrame(frame *Frame) (bool, error) {
 	}
 	off += n
 
-	frame.streamID = streamID
+	frame.StreamID = streamID
 	frame.frameID = frameID
 	frame.data = frame.data[off:]
 	return true, nil
@@ -169,7 +169,7 @@ func (c *codec) encodeFrame(f Frame) error {
 	binary.BigEndian.PutUint32(header[off:], uint32(f.flags))
 	off += 4
 
-	n, err := encodeVarint(header[off:], f.streamID)
+	n, err := encodeVarint(header[off:], f.StreamID)
 	if err != nil {
 		return errors.Wrap(err, "write frame")
 	}
