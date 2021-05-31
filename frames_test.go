@@ -8,7 +8,7 @@ func notifyFrame(t require.TestingT) Frame {
 	b := make([]byte, maxFrameSize)
 	f := Frame{
 		ftype:    frameTypeHaproxyNotify,
-		streamID: 1,
+		StreamID: 1,
 		frameID:  2,
 		data:     b,
 	}
@@ -46,7 +46,7 @@ func helloFrame(t require.TestingT) Frame {
 	f := Frame{
 		ftype:    frameTypeHaproxyHello,
 		flags:    frameFlagFin,
-		streamID: 1,
+		StreamID: 1,
 		frameID:  1,
 		data:     make([]byte, maxFrameSize),
 	}

@@ -2,6 +2,7 @@ package spoe
 
 import (
 	"fmt"
+
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
@@ -9,7 +10,7 @@ import (
 func (c *conn) disconnectFrame(e spoeError) (Frame, error) {
 	f := Frame{
 		frameID:  0,
-		streamID: 0,
+		StreamID: 0,
 		ftype:    frameTypeAgentDiscon,
 		flags:    frameFlagFin,
 		data:     make([]byte, c.frameSize),

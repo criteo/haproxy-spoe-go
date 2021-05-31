@@ -12,7 +12,7 @@ func TestFrameEncoding(t *testing.T) {
 	f := Frame{
 		ftype:    frameTypeAgentACK,
 		flags:    frameFlagFin,
-		streamID: 42,
+		StreamID: 42,
 		frameID:  53,
 		data:     []byte("this is the Frame data"),
 	}
