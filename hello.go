@@ -62,17 +62,21 @@ func (c *conn) handleHello(frame Frame) (Frame, map[string]bool, bool, error) {
 		return frame, nil, false, fmt.Errorf("hello: incompatible version %s, need %s", remoteSupportedVersions, version)
 	}
 
+	healthcheck, _ := data[helloKeyHealthcheck].(bool)
+
 	remoteCapabilitiesStr, ok := data[helloKeyCapabilities].(string)
 	if !ok {
 		return frame, nil, false, fmt.Errorf("hello: expected %s", helloKeyCapabilities)
 	}
 	remoteCapabilities := parseCapabilities(remoteCapabilitiesStr)
-	if !remoteCapabilities[capabilityPipelining] {
+	if !remoteCapabilities[capabilityPipelining] && !healthcheck {
+		// HAProxy never sends pipelining capability on healthcheck hellos
 		return frame, nil, false, fmt.Errorf("hello: expected pipelining capability")
 	}
 
 	c.engineID, _ = data[helloKeyEngineID].(string)
-	if len(c.engineID) == 0 {
+	if len(c.engineID) == 0 && !healthcheck {
+		// HAProxy never sends engine-id on healthcheck hellos
 		return frame, nil, false, fmt.Errorf("hello: engine-id not found")
 	}
 
@@ -105,8 +109,6 @@ func (c *conn) handleHello(frame Frame) (Frame, map[string]bool, bool, error) {
 	off += n
 
 	frame.data = frame.data[:off]
-
-	healthcheck, _ := data[helloKeyHealthcheck].(bool)
 
 	return frame, remoteCapabilities, healthcheck, nil
 }
