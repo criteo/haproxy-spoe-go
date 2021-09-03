@@ -16,6 +16,7 @@ func notifyFrame(t require.TestingT) Frame {
 	m := 0
 
 	n, err := encodeString(f.data[m:], "message-1")
+	require.NoError(t, err)
 	m += n
 	f.data[m] = 2
 	m++
@@ -27,6 +28,7 @@ func notifyFrame(t require.TestingT) Frame {
 	m += n
 
 	n, err = encodeString(f.data[m:], "message-2")
+	require.NoError(t, err)
 	m += n
 	f.data[m] = 2
 	m++
