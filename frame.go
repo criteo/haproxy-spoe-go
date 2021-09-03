@@ -20,8 +20,6 @@ import (
 type frameType byte
 
 const (
-	frameTypeUnset frameType = 0
-
 	// Frames sent by HAProxy
 	frameTypeHaproxyHello  frameType = 1
 	frameTypeHaproxyDiscon frameType = 2

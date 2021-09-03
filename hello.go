@@ -119,19 +119,6 @@ func parseCapabilities(capas string) map[string]bool {
 	return caps
 }
 
-func checkCapabilities(capas string) bool {
-	hasPipelining := false
-
-	for _, s := range strings.Split(capas, ",") {
-		switch s {
-		case capabilityPipelining:
-			hasPipelining = true
-		}
-	}
-
-	return hasPipelining
-}
-
 func parseVersion(v string) ([]int, error) {
 	res := []int{}
 

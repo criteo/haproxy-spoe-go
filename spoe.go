@@ -42,8 +42,6 @@ type Agent struct {
 	Handler Handler
 	cfg     Config
 
-	maxFrameSize int
-
 	engLock sync.Mutex
 	engines map[EngKey]*Engine
 }
