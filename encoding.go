@@ -160,11 +160,11 @@ func encodeIPV6(b []byte, ip net.IP) (int, error) {
 }
 
 func decodeIPV6(b []byte) (net.IP, int, error) {
-	if len(b) < net.IPv4len {
+	if len(b) < net.IPv6len {
 		return nil, 0, fmt.Errorf("decode ipv6: unterminated sequence")
 	}
 
-	return net.IP(b[:net.IPv4len]), net.IPv4len, nil
+	return net.IP(b[:net.IPv6len]), net.IPv6len, nil
 }
 
 func decodeString(b []byte) (string, int, error) {
