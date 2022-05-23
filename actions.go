@@ -6,14 +6,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-type varScope byte
+type VarScope byte
 
 const (
-	VarScopeProcess     varScope = 0
-	VarScopeSession     varScope = 1
-	VarScopeTransaction varScope = 2
-	VarScopeRequest     varScope = 3
-	VarScopeResponse    varScope = 4
+	VarScopeProcess     VarScope = 0
+	VarScopeSession     VarScope = 1
+	VarScopeTransaction VarScope = 2
+	VarScopeRequest     VarScope = 3
+	VarScopeResponse    VarScope = 4
 )
 
 const (
@@ -27,7 +27,7 @@ type Action interface {
 
 type ActionSetVar struct {
 	Name  string
-	Scope varScope
+	Scope VarScope
 	Value interface{}
 }
 
@@ -53,7 +53,7 @@ func (a ActionSetVar) encode(b []byte) (int, error) {
 
 type ActionUnsetVar struct {
 	Name  string
-	Scope varScope
+	Scope VarScope
 }
 
 func (a ActionUnsetVar) encode(b []byte) (int, error) {
