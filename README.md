@@ -1,3 +1,5 @@
+**Please note:** This repository is currently unmaintained. Please switch to project https://github.com/negasus/haproxy-spoe-go if you want to use a golang version of haproxy-spoe library.
+
 [![GoDoc](https://godoc.org/github.com/criteo/haproxy-spoe-go?status.svg)](https://godoc.org/github.com/criteo/haproxy-spoe-go)
 
 # SPOE in Go
